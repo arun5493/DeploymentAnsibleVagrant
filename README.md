@@ -11,6 +11,11 @@ Inventory file Contents:
 192.168.33.41 ansible_ssh_user=vagrant ansible_ssh_private_key_file=keys/node3/private_key
 ```
 
+Command to start the playbooks:
+```
+ansible-playbook playbooks/script.yml -i inventory -e ansible_python_interpreter=/usr/bin/python3
+```
+
 Ansible script for setting up Coffeemaker - [coffeemaker_setup](coffeemaker_setup.yml)
 
 Ansible script for setting up Test Env for Coffeemaker - [coffeemaker_test](coffeemaker_test.yml)
