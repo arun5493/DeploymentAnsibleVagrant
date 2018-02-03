@@ -6,6 +6,7 @@ Used Ubuntu Xenial for the VMs:
 vagrant init ubuntu/xenial64
 ```
 Uncommented the following in the Vagrant Files:
+
 node0:
 ```
 config.vm.network "private_network", ip: "192.168.33.40"
