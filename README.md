@@ -20,4 +20,4 @@ Ansible script for setting up Coffeemaker - [coffeemaker_setup](coffeemaker_setu
 
 Ansible script for setting up Test Env for Coffeemaker - [coffeemaker_test](coffeemaker_test.yml)
 
-Link for Screencast - [here]()
+Link for Screencast - [here](https://youtu.be/I24dgWeVqCU)
