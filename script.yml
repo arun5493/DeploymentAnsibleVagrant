@@ -1,0 +1,15 @@
+- hosts: localhost
+
+  tasks:
+    - debug:
+        msg: "Setting up environment for coffeemaker and running it"
+
+- include: coffeemaker_setup.yml
+
+- hosts: localhost
+  tasks:
+    - debug:
+        msg: "Setting up environment for selenium test"
+
+- include: coffeemaker_test.yml
+

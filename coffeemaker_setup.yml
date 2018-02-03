@@ -1,0 +1,81 @@
+---
+- hosts: node0
+  remote_user: root 
+
+  vars_prompt:
+    - name: "github_username"
+      prompt: "Github Username"
+    - name: "github_password"
+      prompt: "github password"
+    - name: "root_password"
+      prompt: "Root password for MySQL Server"
+  
+  tasks:
+
+    - debug: msg="the value of github_username is {{ github_username }}"
+    
+    - name: Install Git
+      become: yes
+      apt: pkg=git state=present update_cache=true cache_valid_time=1200
+    
+    - name: Remove previous clone if present
+      file:
+        state: absent
+        path: 'Onboarding'      
+
+    - name: Cloning CoffeeMaker Github repo
+      git: 
+        repo: https://{{ github_username | urlencode }}:{{ github_password}}@github.ncsu.edu/engr-csc326-staff/Onboarding.git 
+        clone: yes 
+        dest: Onboarding/
+
+    - name: Add Oracle Java Repository
+      become: yes
+      apt_repository: repo='ppa:webupd8team/java'
+
+    - name: Accept Java 8 License
+      become: yes
+      debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+
+    - name: Install Oracle Java 8
+      become: yes
+      apt: name={{item}} state=latest
+      with_items:
+        - oracle-java8-installer
+        - ca-certificates
+        - oracle-java8-set-default
+
+    - name: Install Maven
+      become: yes
+      apt: pkg=maven state=present update_cache=true cache_valid_time=1200
+
+    - name: Set MySQL root password before installing
+      become: yes
+      debconf: name='mysql-server' question='mysql-server/root_password' value='{{root_password | quote}}' vtype='password'
+
+    - name: Confirm MySQL root password before installing
+      become: yes
+      debconf: name='mysql-server' question='mysql-server/root_password_again' value='{{root_password | quote}}' vtype='password'
+
+    - name: Install mysql-server
+      become: yes
+      apt: pkg=mysql-server state=present update_cache=true cache_valid_time=1200
+
+
+    - name: Copy hibernate.cfg.xml to src/main/resources/ folder
+      copy: remote_src=true src=Onboarding/env/templates/hibernate-template.cfg.xml dest=~/Onboarding/CoffeeMaker/src/main/resources/hibernate.cfg.xml
+
+    - name: Replace {{root_db_password}} with the root_password variable
+      replace:
+       path: Onboarding/CoffeeMaker/src/main/resources/hibernate.cfg.xml
+       regexp: '\{\{mysql_password\}\}'
+       replace: "{{root_password}}"
+
+    - name: Starting the application
+      shell: nohup mvn spring-boot:run &
+      args:
+       chdir: Onboarding/CoffeeMaker
+
+    - name: 3 Minute Wait time for application start-up
+      pause:
+       minutes: 2

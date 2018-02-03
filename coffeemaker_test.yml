@@ -1,0 +1,90 @@
+---
+- hosts: node1
+  remote_user: root
+  sudo: True
+
+  vars:
+    - apt_file: /etc/apt/sources.list.d/google-chrome.list
+
+  vars_prompt:
+    - name: "github_username"
+      prompt: "Github Username"
+    - name: "github_password"
+      prompt: "github password" 
+
+  tasks:
+
+    - debug: msg="the value of github_username is {{ github_username }}"
+    
+    - name: Install Git
+      become: yes
+      apt: pkg=git state=present update_cache=true cache_valid_time=1200
+
+    - name: Does the Google apt file exist?
+      command: test -f {{apt_file}}
+      register: google_apt_exists
+      ignore_errors: True
+
+    - name: Add Google Chrome key
+      shell: wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+      when: google_apt_exists.rc == 1
+
+    - name: Add Google Chrome repo
+      copy: content="deb http://dl.google.com/linux/chrome/deb/ stable main" dest={{apt_file}} owner=root group=root mode=644
+      when: google_apt_exists.rc == 1
+
+    - name: Update apt cache
+      apt: update_cache=yes
+      when: google_apt_exists.rc == 1
+
+    - name: Install Google Chrome
+      apt: pkg=google-chrome-stable state=installed
+    
+    - name: Remove previous clone if present
+      file:
+        state: absent
+        path: 'Onboarding-Selenium'    
+
+    - name: Cloning CoffeeMaker-Selenium Github repo
+      git: 
+        repo: https://{{ github_username | urlencode }}:{{ github_password}}@github.com/CSC-326/Onboarding-Selenium.git 
+        clone: yes 
+        dest: Onboarding-Selenium/
+
+    - name: Add Oracle Java Repository
+      become: yes
+      apt_repository: repo='ppa:webupd8team/java'
+
+    - name: Accept Java 8 License
+      become: yes
+      debconf: name='oracle-java8-installer' question='shared/accepted-oracle-license-v1-1' value='true' vtype='select'
+
+    - name: Install Oracle Java 8
+      become: yes
+      apt: name={{item}} state=latest
+      with_items:
+        - oracle-java8-installer
+        - ca-certificates
+        - oracle-java8-set-default
+
+    - name: Install Maven
+      become: yes
+      apt: pkg=maven state=present update_cache=true cache_valid_time=1200
+
+    - name: Modifying the URL in Webtest.java
+      replace:
+       path: 'Onboarding-Selenium/src/src/test/java/selenium/tests/WebTest.java'
+       regexp: '.ROOT = (.+);'
+       replace: "ROOT = \"http://{{groups['node0'][0]}}:8080/\";"
+
+    - name: Adding no-sandbox mode for chrome
+      lineinfile:
+       path: 'Onboarding-Selenium/src/src/test/java/selenium/tests/WebTest.java'
+       insertafter: '.*headless(.+);'
+       line: 'options.addArguments("no-sandbox");'
+
+    - name: Starting mvn test
+      shell: sudo mvn test
+      args:
+       chdir: 'Onboarding-Selenium/src'
+       
